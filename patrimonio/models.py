@@ -69,24 +69,13 @@ class Movimentacao(models.Model):
         related_name='movimentacoes_destino'
     )
 
-    observacao = models.TextField(blank=True, null=True)
-
-    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE, related_name='movimentacoes')
-    data_movimentacao = models.DateTimeField(auto_now_add=True)
-
-    origem_funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, blank=True, null=True, related_name='movimentacoes_origem')
-    destino_funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, blank=True, null=True, related_name='movimentacoes_destino')
-
-    origem_unidade = models.ForeignKey(Unidade, on_delete=models.SET_NULL, blank=True, null=True, related_name='movimentacoes_origem')
-    destino_unidade = models.ForeignKey(Unidade, on_delete=models.SET_NULL, blank=True, null=True, related_name='movimentacoes_destino')
-
     quantidade = models.PositiveIntegerField(default=1)
     observacao = models.TextField(blank=True, null=True)
 
     TIPO_MOVIMENTACAO = [
-    ('entrada', 'Entrada'),
-    ('saida', 'Saída'),
-]
+        ('entrada', 'Entrada'),
+        ('saida', 'Saída'),
+    ]
     tipo = models.CharField(max_length=10, choices=TIPO_MOVIMENTACAO)
 
     class Meta:
@@ -97,17 +86,24 @@ class Movimentacao(models.Model):
     def clean(self):
         super().clean()
         if self.tipo == 'saida':
+            if self.equipamento_id is None:
+                return
             if self.equipamento.quantidade_estoque < self.quantidade:
                 raise ValidationError(f'Estoque insuficiente: há {self.equipamento.quantidade_estoque} unidades disponíveis, mas tentou retirar {self.quantidade}.')
 
     def __str__(self):
-        return f"Movimentação do {self.equipamento.nome} em {self.data_movimentacao.strftime('%Y-%m-%d %H:%M')}"
-    
+        if self.equipamento_id:
+            return f"Movimentação do {self.equipamento.nome} em {self.data_movimentacao.strftime('%Y-%m-%d %H:%M')}"
+        return "Movimentação (sem equipamento)"
+
     def save(self, *args, **kwargs):
-        if not self.pk:  # só na criação, evita rodar duas vezes em update
-            # Atualiza o estoque do equipamento
-            equipamento = self.equipamento
-            # Exemplo: se for saída, diminui a quantidade
-            equipamento.quantidade_estoque = max(0, equipamento.quantidade_estoque - self.quantidade)
-            equipamento.save()
+        self.full_clean()  # para rodar clean() antes de salvar
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+        if is_new:
+            equipamento = self.equipamento
+            if self.tipo == 'saida':
+                equipamento.quantidade_estoque = max(0, equipamento.quantidade_estoque - self.quantidade)
+            else:  # entrada
+                equipamento.quantidade_estoque += self.quantidade
+            equipamento.save()

@@ -4,7 +4,7 @@ from .models import Equipamento, Movimentacao
 @admin.register(Equipamento)
 class EquipamentoAdmin(admin.ModelAdmin):
     list_display = ('id', 'nome', 'categoria', 'numero_patrimonio', 'status', 'funcionario', 'unidade')
-    search_fields = ('nome', 'numero_patrimonio')
+    search_fields = ('nome', 'numero_patrimonio', 'categoria__nome')
     list_filter = ('categoria', 'status', 'funcionario', 'unidade')
     ordering = ('nome',)
 
