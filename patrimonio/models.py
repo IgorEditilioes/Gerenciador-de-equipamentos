@@ -2,6 +2,7 @@ from django.db import models
 from cadastro.models import Categoria, Unidade, Funcionario
 from django.core.exceptions import ValidationError
 
+
 class Equipamento(models.Model):
     STATUS_CHOICES = [
         ('funcionando', 'Funcionando'),
@@ -22,9 +23,9 @@ class Equipamento(models.Model):
     
     nome = models.CharField(max_length=200)
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
-    numero_patrimonio = models.CharField(max_length=50, blank=True, null=True)
+    numero_patrimonio = models.CharField(max_length=50, blank=True, null=True, unique=True)
     descricao = models.TextField(blank=True, null=True)
-
+    observacao = models.TextField(blank=True, null=True)
     funcionario = models.ForeignKey(
         Funcionario, on_delete=models.SET_NULL, blank=True, null=True,
         related_name='equipamentos'

@@ -12,6 +12,7 @@ class CategoriaAdmin(admin.ModelAdmin):
 @admin.register(Unidade)
 class UnidadeAdmin(admin.ModelAdmin):
     list_display = ('id', 'nome', 'endereco', 'n_cnes')
+    list_display_links = ('nome',)
     search_fields = ('nome', 'endereco', 'n_cnes')
     ordering = ('nome',)
 
@@ -22,3 +23,4 @@ class FuncionarioAdmin(admin.ModelAdmin):
     search_fields = ('nome', 'cargo', 'email')
     list_filter = ('unidade',)
     ordering = ('nome',)
+    list_per_page = 10
