@@ -98,13 +98,22 @@ class Movimentacao(models.Model):
         return "Movimentação (sem equipamento)"
 
     def save(self, *args, **kwargs):
-        self.full_clean()  # para rodar clean() antes de salvar
+        self.full_clean()  # valida antes de salvar
         is_new = self.pk is None
         super().save(*args, **kwargs)
-        if is_new:
-            equipamento = self.equipamento
+
+        equipamento = self.equipamento
+
+        # Só atualiza se houver número de patrimônio
+        if equipamento.numero_patrimonio:
+            # Atualiza estoque
             if self.tipo == 'saida':
                 equipamento.quantidade_estoque = max(0, equipamento.quantidade_estoque - self.quantidade)
             else:  # entrada
                 equipamento.quantidade_estoque += self.quantidade
+
+            # Atualiza unidade do equipamento se houver destino
+            if self.destino_unidade:
+                equipamento.unidade = self.destino_unidade
+
             equipamento.save()
