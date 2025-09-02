@@ -8,12 +8,32 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
+
+# Filtro customizado para patrimônio
+class PatrimonioFilter(admin.SimpleListFilter):
+    title = 'Possui patrimônio'
+    parameter_name = 'patrimonio'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('com', 'Com patrimônio'),
+            ('sem', 'Sem patrimônio'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'com':
+            return queryset.exclude(numero_patrimonio__isnull=True).exclude(numero_patrimonio__exact='')
+        if self.value() == 'sem':
+            return queryset.filter(numero_patrimonio__isnull=True) | queryset.filter(numero_patrimonio__exact='')
+        return queryset
+
+
 @admin.register(Equipamento)
 class EquipamentoAdmin(admin.ModelAdmin):
     list_display = ('id', 'nome', 'quantidade_estoque', 'categoria', 'numero_patrimonio', 'status', 'funcionario', 'unidade')
     list_display_links = ('nome',)
     search_fields = ('nome', 'numero_patrimonio', 'categoria__nome', 'status')
-    list_filter = ('categoria', 'status', 'funcionario', 'unidade')
+    list_filter = ('categoria', 'status', 'funcionario', 'unidade', PatrimonioFilter)  # 👈 filtro adicionado
     ordering = ('nome',)
     list_per_page = 10
     actions = ['exportar_pdf', 'exportar_excel']
@@ -62,7 +82,6 @@ class EquipamentoAdmin(admin.ModelAdmin):
     exportar_pdf.short_description = "Exportar equipamentos selecionados para PDF"
 
     def exportar_excel(self, request, queryset):
-        # Cria o workbook e a planilha
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Equipamentos"
@@ -87,7 +106,6 @@ class EquipamentoAdmin(admin.ModelAdmin):
             length = max(len(str(cell.value)) for cell in column_cells)
             ws.column_dimensions[column_cells[0].column_letter].width = length + 2
 
-        # Retorna arquivo Excel como resposta
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
@@ -96,6 +114,7 @@ class EquipamentoAdmin(admin.ModelAdmin):
         return response
 
     exportar_excel.short_description = "Exportar equipamentos selecionados para Excel"
+
 
 @admin.register(Movimentacao)
 class MovimentacaoAdmin(admin.ModelAdmin):
@@ -129,6 +148,8 @@ class MovimentacaoAdmin(admin.ModelAdmin):
             <b>Destino Func.:</b> {mov.destino_funcionario or '-'}<br/>
             <b>Origem Unidade:</b> {mov.origem_unidade or '-'}<br/>
             <b>Destino Unidade:</b> {mov.destino_unidade or '-'}<br/>
+            <b>Quantidade movimentada:</b> {mov.quantidade or '-'}<br/>
+            <b>Estoque atual:</b> {mov.equipamento.quantidade_estoque}<br/>
             """
             elements.append(Paragraph(texto, styles['Normal']))
             elements.append(Spacer(1, 12))  # espaço entre movimentações

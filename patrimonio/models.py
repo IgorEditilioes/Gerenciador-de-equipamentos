@@ -103,17 +103,16 @@ class Movimentacao(models.Model):
         super().save(*args, **kwargs)
 
         equipamento = self.equipamento
-
-        # Só atualiza se houver número de patrimônio
-        if equipamento.numero_patrimonio:
-            # Atualiza estoque
-            if self.tipo == 'saida':
-                equipamento.quantidade_estoque = max(0, equipamento.quantidade_estoque - self.quantidade)
-            else:  # entrada
-                equipamento.quantidade_estoque += self.quantidade
-
-            # Atualiza unidade do equipamento se houver destino
-            if self.destino_unidade:
-                equipamento.unidade = self.destino_unidade
+        if equipamento:
+            if equipamento.numero_patrimonio:
+                # É um item com patrimônio → não mexe no estoque numérico
+                if self.tipo == 'saida' and self.destino_unidade:
+                    equipamento.unidade = self.destino_unidade
+            else:
+                # É um item sem patrimônio → controla pelo estoque
+                if self.tipo == 'saida':
+                    equipamento.quantidade_estoque = max(0, equipamento.quantidade_estoque - self.quantidade)
+                else:  # entrada
+                    equipamento.quantidade_estoque += self.quantidade
 
             equipamento.save()
